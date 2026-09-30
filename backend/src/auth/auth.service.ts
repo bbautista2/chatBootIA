@@ -62,4 +62,47 @@ export class AuthService {
 
     return this.login({ id: user.id, email: user.email, role: user.role });
   }
+
+  async findAllUsers() {
+    return this.prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async updateUser(id: string, data: { email?: string; role?: UserRole; password?: string }) {
+    const updateData: any = {};
+    if (data.email) updateData.email = data.email;
+    if (data.role) updateData.role = data.role;
+    if (data.password) updateData.passwordHash = await bcrypt.hash(data.password, 10);
+
+    return this.prisma.user.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async deleteUser(id: string) {
+    return this.prisma.user.delete({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+      },
+    });
+  }
 }

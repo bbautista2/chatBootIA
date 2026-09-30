@@ -1,6 +1,8 @@
 import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import api from "@/lib/api"
+import axios from "axios"
+
+const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
 
 declare module "next-auth" {
   interface User {
@@ -45,18 +47,18 @@ export const authOptions: NextAuthOptions = {
           return null
         }
         try {
-          const response = await api.post("/auth/login", {
+          const response = await axios.post(`${backendUrl}/api/auth/login`, {
             email: credentials.email,
             password: credentials.password,
           })
-          const user = response.data.user || response.data
-          if (user && user.accessToken) {
+          const data = response.data
+          if (data.user) {
             return {
-              id: user.id,
-              email: user.email,
-              name: user.name,
-              role: user.role,
-              accessToken: user.accessToken,
+              id: data.user.id,
+              email: data.user.email,
+              name: data.user.name,
+              role: data.user.role,
+              accessToken: data.access_token,
             }
           }
           return null
