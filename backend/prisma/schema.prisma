@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  superadmin
+  admin
+}
+
+enum AccountStatus {
+  active
+  inactive
+  error
+}
+
+enum TriggerType {
+  keyword
+  first_message
+  comment
+  postback
+}
+
+enum FlowStepType {
+  text
+  image
+  buttons
+  carousel
+  handoff
+}
+
+enum MessageDirection {
+  in
+  out
+}
+
+enum MessageType {
+  text
+  image
+  video
+  audio
+  interactive
+}
+
+enum ConversationStatus {
+  bot
+  human
+  closed
+}
+
+enum LogLevel {
+  info
+  warn
+  error
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(admin)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Account {
+  id             String         @id @default(cuid())
+  name           String
+  igUserId       String         @unique
+  pageId         String
+  accessToken    String
+  tokenExpiresAt DateTime?
+  status         AccountStatus  @default(active)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  botConfig      BotConfig?
+  flows          Flow[]
+  contacts       Contact[]
+  conversations  Conversation[]
+  logs           Log[]
+}
+
+model BotConfig {
+  id              String   @id @default(cuid())
+  accountId        String   @unique
+  account          Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  aiEnabled        Boolean  @default(false)
+  aiPrompt         String?
+  welcomeMessage   String?
+  businessHours    Json?
+  fallbackMessage  String?
+}
+
+model Flow {
+  id        String      @id @default(cuid())
+  accountId String
+  account   Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name      String
+  isActive  Boolean     @default(true)
+  priority  Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  triggers  Trigger[]
+  steps     FlowStep[]
+}
+
+model Trigger {
+  id      String      @id @default(cuid())
+  flowId  String
+  flow    Flow        @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  type    TriggerType
+  value   String
+}
+
+model FlowStep {
+  id          String        @id @default(cuid())
+  flowId      String
+  flow        Flow          @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  order       Int
+  type        FlowStepType
+  content     Json
+  nextStepId  String?
+}
+
+model Contact {
+  id           String    @id @default(cuid())
+  accountId    String
+  account      Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  igScopedId  String
+  name         String?
+  profilePic   String?
+  tags         String[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  conversations Conversation[]
+
+  @@unique([accountId, igScopedId])
+}
+
+model Conversation {
+  id             String             @id @default(cuid())
+  accountId      String
+  account        Account            @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  contactId      String
+  contact        Contact            @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  status         ConversationStatus @default(bot)
+  lastMessageAt  DateTime           @default(now())
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  messages       Message[]
+}
+
+model Message {
+  id             String           @id @default(cuid())
+  conversationId String
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  direction      MessageDirection
+  type           MessageType
+  content        Json
+  sentAt         DateTime         @default(now())
+  createdAt      DateTime         @default(now())
+}
+
+model Log {
+  id        String    @id @default(cuid())
+  accountId String?
+  account   Account?  @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  level     LogLevel
+  message   String
+  meta      Json?
+  createdAt DateTime  @default(now())
+}
